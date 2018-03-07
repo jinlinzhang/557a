@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>US Presidential Elections from 1940 to 2016</title>
+        <script src="https://d3js.org/d3.v4.js"></script>
+    
+        <style>
+            body {
+                position: absolute;
+            }
+
+            div.tooltip {
+                position: absolute;
+                text-align: left;
+                width: 225px;
+                height: 100px;
+                padding: 10px;
+                font: 10px sans-serif;
+                background: pink;
+                border: 0px;
+                border-radius: 8px;
+
+            }
+
+            div.image {
+                position: absolute;
+                text-align: center;
+                width: 8px;
+                height: 15px;
+                top: 200px;
+                left: 800px;                
+            }
+            
+            .legend {
+                position:absolute;
+                left:800px;
+                top:350px;
+}
+        </style>
+    </head>
+    <body>
+        <h1>US Presidential Elections from 1940 to 2016</h1>
+        <script type="text/javascript">
+
+            var width = 700;
+            var height = 600;
+            var padding = 50;
+            
+            var rectPadding = 2;
+            var rectWidth = width / 13;
+            var rectHeight = height / 15;
+
+            var mapPadding = 10;
+
+            ///////////find the color scale online///////////////////
+            var colorScale = d3.scaleQuantize()
+                    .domain([-60, 60])
+                    .range(["#003D7A", "#02509E", "#2E82BF", "#68ADD8",
+                            "#9CC9E2", "#C5DBF0", "#FEBB9E", "#FE926E",
+                            "#FE6943", "#E12B1B", "#A70A0A", "#890202"]);
+
+            var  geshi = /\d+.\d/;
+
+            var timeline = d3.select("body")
+                            .append("svg")
+                            .attr("width", 1000)
+                            .attr("height", 70)
+                            .attr("padding", padding)
+                            .attr("class", "timeline");
+
+            var colorcode = d3.select("body")
+                            .append("svg")
+                            .attr("width", 960)
+                            .attr("height", 60);                    
+
+            var canvas = d3.select("body")
+                            .append("svg")
+                            .attr("width", 1000)
+                            .attr("height", 600)
+                            .attr("padding", 50);                      
+            
+
+
+            var image = d3.select("body")
+                .append("div")
+                .attr("class", "image")
+                .style("opacity", 1);
+            
+
+
+            var tooltip = d3.select("body")
+                .append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+            
+            var states = [ ["AK", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "ME"],
+                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "VT", "NH"],
+                           [0, "WA", "ID", "MT", "ND", "MN", "IL", "WI", "MI", "NY", "RI", "MA"],
+                           [0, "OR", "NV", "WY", "SD", "IA", "IN", "OH", "PA", "NJ", "CT", 0],
+                           [0, "CA", "UT", "CO", "NE", "MO", "KY", "WV", "VA", "MD", "DC", 0],
+                           [0, 0, "AZ", "NM", "KS", "AR", "TN", "NC", "SC", "DE", 0, 0],
+                           [0, 0, 0, 0, "OK", "LA", "MS", "AL", "GA", 0, 0, 0],
+                           [0, "HI", 0, 0,"TX", 0, 0, 0, 0, "FL", 0, 0] ]; 
+            
+            var timelineX = d3.scaleLinear()
+                    .domain([0, 19])
+                    .range([20, 980]);
+
+            var timelineY = 20;
+            
+            var timelineYears = ["1940", "1944", "1948", "1952", "1956",
+                                "1960", "1964", "1968", "1972", "1976",
+                                "1980", "1984", "1988", "1992", "1996",
+                                "2000", "2004", "2008", "2012", "2016"]; 
+            
+            var timelineYearsScale = d3.scaleLinear()
+                    .domain([1940, 2016])
+                    .range([20, 1000 - 20]);
+
+            var timelineColor = ["#2E82BF", "#2E82BF", "#2E82BF", "#E12B1B", 
+                                "#E12B1B", "#2E82BF", "#2E82BF", "#E12B1B", 
+                                "#E12B1B", "#2E82BF", "#E12B1B", "#E12B1B",
+                                "#E12B1B", "#2E82BF", "#2E82BF", "#E12B1B",
+                                "#E12B1B", "#2E82BF", "#2E82BF", "#E12B1B"];
+
+
+            var colorLabels = [" -60.0 to -50.0", " -50.0 to -40.0", 
+                                " -40.0 to -30.0", " -30.0 to -20.0", 
+                                " -20.0 to -10.0", " -10.0 to 0.0", 
+                                " 0.0 to 10.0", " 10.0 to 20.0", 
+                                " 20.0 to 30.0", " 30.0 to 40.0", 
+                                " 40.0 to 50.0", " 50.0 to 60.0" ];
+            
+            function getNum(a, j) {
+                for (var i = 0; i <= a.length - 1; i++) {
+                    var x = a[i].indexOf(j);
+                    if (x > -1) {
+                        return [i, x];
+                    }
+                }
+            } 
+            
+            var csvArray = ["election-results-1940.csv", "election-results-1944.csv",
+                        "election-results-1948.csv", "election-results-1952.csv",
+                        "election-results-1956.csv", "election-results-1944.csv", 
+                        "election-results-1964.csv", "election-results-1968.csv", 
+                        "election-results-1972.csv", "election-results-1976.csv", 
+                        "election-results-1980.csv", "election-results-1984.csv", 
+                        "election-results-1988.csv", "election-results-1992.csv", 
+                        "election-results-1996.csv", "election-results-2000.csv", 
+                        "election-results-2004.csv", "election-results-2008.csv", 
+                        "election-results-2012.csv", "election-results-2016.csv" ];
+            
+            var zongtong = ["https://upload.wikimedia.org/wikipedia/commons/b/b8/FDR_in_1933.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/b/b8/FDR_in_1933.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/e/e6/HarryTruman.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/7/78/Dwight_D._Eisenhower%2C_White_House_photo_portrait%2C_February_1959.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/7/78/Dwight_D._Eisenhower%2C_White_House_photo_portrait%2C_February_1959.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/5/5e/John_F._Kennedy%2C_White_House_photo_portrait%2C_looking_up.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/c/c3/37_Lyndon_Johnson_3x4.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/3/39/Richard_M._Nixon%2C_ca._1935_-_1982_-_NARA_-_530679.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/3/39/Richard_M._Nixon%2C_ca._1935_-_1982_-_NARA_-_530679.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/James_Earl_%22Jimmy%22_Carter_-_NARA_-_558522.tif/lossy-page1-220px-James_Earl_%22Jimmy%22_Carter_-_NARA_-_558522.tif.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/1/16/Official_Portrait_of_President_Reagan_1981.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/1/16/Official_Portrait_of_President_Reagan_1981.jpg",
+                                "https://www.biography.com/.image/t_share/MTE1ODA0OTcxMjgzODc1MzQx/george-h-walker-bush-38066-1-402.jpg",
+                                "http://ep.yimg.com/ay/mcmahanphoto/president-bill-clinton-white-house-portrait-photo-print-13.jpg",
+                                "http://ep.yimg.com/ay/mcmahanphoto/president-bill-clinton-white-house-portrait-photo-print-13.jpg",
+                                "https://upload.wikimedia.org/wikipedia/commons/d/d4/George-W-Bush.jpeg",
+                                "https://upload.wikimedia.org/wikipedia/commons/d/d4/George-W-Bush.jpeg",
+                                "https://www.biography.com/.image/t_share/MTE4MDAzNDEwNzg5ODI4MTEw/barack-obama-12782369-1-402.jpg",
+                                "https://www.biography.com/.image/t_share/MTE4MDAzNDEwNzg5ODI4MTEw/barack-obama-12782369-1-402.jpg",
+                                "https://pbs.twimg.com/profile_images/874276197357596672/kUuht00m_400x400.jpg"];
+
+            var wholemap = {};
+
+            wholemap["1940"] = zongtong[0];
+            wholemap["1944"] = zongtong[1];
+            var cur_csv = csvArray[19];
+            var cur_year = 2016;
+            wholemap["1948"] = zongtong[2];
+            wholemap["1952"] = zongtong[3];
+            wholemap["1956"] = zongtong[4];
+            wholemap["1960"] = zongtong[5];
+            wholemap["1964"] = zongtong[6];
+            wholemap["1968"] = zongtong[7];
+            wholemap["1972"] = zongtong[8];
+            wholemap["1976"] = zongtong[9];
+            wholemap["1980"] = zongtong[10];
+            wholemap["1984"] = zongtong[11];
+            wholemap["1988"] = zongtong[12];
+            wholemap["1992"] = zongtong[13];
+            wholemap["1996"] = zongtong[14];
+            wholemap["2000"] = zongtong[15];
+            wholemap["2004"] = zongtong[16];
+          
+            
+
+            function csv_To_Parse(f) {
+                cur_csv = f;
+            }
+
+            function upyear(year) {
+                cur_year = year;
+            }
+
+            wholemap["2008"] = zongtong[17];
+            wholemap["2012"] = zongtong[18];
+            wholemap["2016"] = zongtong[19];
+            
+            function setup() {
+                timeline.append("line").attr("x1",0).attr("x2", 980).attr("y1", 20).attr("y2", 20).style("stroke-dasharray", ("5, 5")).style("stroke", "gray").style("stroke-width", 3);
+                draw_Timeline_Years();
+                drawcolorcode();
+            }
+
+
+
+            function draw_Timeline_Circles(){
+                timeline.selectAll("circle")
+                    .data([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
+                    .enter().append("circle")
+                    .attr("cx",function(d) {
+                        return timelineX(+d);
+                    })
+                    .attr("r", 10)
+                    .attr("fill", function(d, i) {
+                        return timelineColor[i];
+                    })
+                    .attr("cy", timelineY)
+                    .on("click", function(d) {
+                            csv_To_Parse(csvArray[d]);
+                            d3.csv(cur_csv, function(data) {                
+                                canvas.selectAll("*").remove();
+                                d3.select(".image").html("");
+                                d3.select(".presidentName").text("");
+                                upyear(timelineYears[d]);                            
+                                drawmap(data);
+                        });                       
+                    });
+            }
+
+            
+            function draw_Timeline_Years() {    
+                    timeline.selectAll("text")
+                        .data(timelineYears)
+                        .enter()
+                        .append("text")
+                        .text(function(d){
+                            return d;
+                        })
+                        .attr("text-anchor","middle")
+                        .attr("x", function(d) {
+                            return timelineYearsScale(+d);
+                        })
+                        .attr("y", function() {
+                            return 40;
+                        })
+                        .attr("font-family", "sans-serif")
+                        .attr("font-size", "9px")
+                        .attr("fill", "black");
+            }
+
+            function drawcolorcode() {
+                colorcode.selectAll("rect")
+                    .data(colorScale.range())
+                    .enter()
+                    .append("rect")
+                    .attr("x", function(d, i){
+                        return i * 80;
+                    })
+                    .attr("y", 10)
+                    .attr("width", 1200)
+                    .attr("height", 7)
+                    .attr("stroke", "white")
+                    .attr("stroke-width", "1px")
+                    .attr("fill", function(d) {
+                        return d;
+                    });
+                    
+                colorcode.selectAll("text")
+                    .data(colorLabels)
+                    .enter()
+                    .append("text")
+                    .text(function(d){
+                        return d;
+                    })                    
+                    .attr("x", function(d, i) {
+                        return i * 80 + 5;
+                    })
+                    .attr("y", 30)
+                    .attr("font-family", "sans-serif")
+                    .attr("font-size", "10px")
+                    .attr("fill", "black");
+            }
+
+
+            function drawmap(data) {
+                canvas.selectAll("rect")
+                    .data(data)
+                    .enter()
+                    .append("rect")
+                    .attr( "x", function(d) {
+                        return getNum(states, d.Abbreviation)[1] * (width /13 + rectPadding);
+                    })
+                    .attr( "y", function(d) { 
+                        return getNum(states, d.Abbreviation)[0] * (height / 15 + rectPadding) + mapPadding ;
+                    })
+                    .attr("width", rectWidth)
+                    .attr("height", rectHeight)
+                    .attr("fill", function(d){
+                        var a = +d['R_Percentage'].match(geshi);
+                        var b = +d["D_Percentage"].match(geshi);
+                        var c = +a - +b;
+
+                        return colorScale(+c);
+                    })
+                    .on("mouseover", function(d){
+                        if (d.D_Percentage < d.R_Percentage) {
+                        tooltip.html(
+                            "<h3 style=\"color:red;\">" + d["State"] + "</h3>" +
+                            "<h4 style=\"text-align:left;\"> Electoral Votes: " + d.Total_EV + "</h4>" +
+                            "<ul><li style=\"color:blue; font-size:10;\">" + d.D_Nominee + ": " + d.D_Votes + "(" + d.D_Percentage + "%)</li><br>" +
+  							"<li style=\"color:red; font-size:10;\">" + d.R_Nominee + ": " + d.R_Votes + "(" + d.R_Percentage + "%)</li></ul>"
+                        )   
+                        
+                        .style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY - 28) + "px")
+                        .style("opacity", 0.8);
+                        } else {
+                            tooltip.html(
+                            "<h3 style=\"color:blue;\">" + d["State"] + "</h3>" +
+                            "<h4 style=\"text-align:left;\"> Electoral Votes: " + d.Total_EV + "</h4>" +
+                            "<ul><li style=\"color:blue; font-size:10;\">" + d.D_Nominee + ": " + d.D_Votes + "(" + d.D_Percentage + "%)</li><br>" +
+  							"<li style=\"color:red; font-size:10;\">" + d.R_Nominee + ": " + d.R_Votes + "(" + d.R_Percentage + "%)</li></ul>"
+                        )   
+                        
+                        .style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY - 28) + "px")
+                        .style("opacity", 0.8);
+                        }
+                    })                    
+                    .on("mouseout", function() {
+                        tooltip.style("opacity", 0);
+                    });
+                    draw_Image(cur_year);
+                canvas.selectAll("text")
+                    .data(data)
+                    .enter()
+                    .append("text")
+                    .text(function(d){
+                        return (d.Abbreviation);
+                    })
+                    .attr("text-anchor","middle")
+                    .attr("x", function(d) {
+                        return getNum(states, d.Abbreviation)[1] * (width / 13 + rectPadding) + rectWidth / 2;
+                    })
+                    .attr("y", function(d) {
+                        return getNum(states, d.Abbreviation)[0] * (height / 15 + rectPadding) + rectHeight / 2 + mapPadding;
+                    })
+                    .attr("font-family", "sans-serif")
+                    .attr("font-size", "10px")
+                    .attr("fill", "grey")
+                    .on("mouseover", function(d){
+                        if (d.D_Percentage < d.R_Percentage) {
+                        tooltip.html(
+                            "<h3 style=\"color:red;\">" + d["State"] + "</h3>" +
+                            "<h4 style=\"text-align:left;\"> Electoral Votes: " + d.Total_EV + "</h4>" +
+                            "<ul><li style=\"color:blue; font-size:10;\">" + d.D_Nominee + ": " + d.D_Votes + "(" + d.D_Percentage + "%)</li><br>" +
+  							"<li style=\"color:red; font-size:10;\">" + d.R_Nominee + ": " + d.R_Votes + "(" + d.R_Percentage + "%)</li></ul>"
+                        )   
+                        
+                        .style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY - 28) + "px")
+                        .style("opacity", 0.8);
+                        } else {
+                            tooltip.html(
+                            "<h3 style=\"color:blue;\">" + d["State"] + "</h3>" +
+                            "<h4 style=\"text-align:left;\"> Electoral Votes: " + d.Total_EV + "</h4>" +
+                            "<ul><li style=\"color:blue; font-size:10;\">" + d.D_Nominee + ": " + d.D_Votes + "(" + d.D_Percentage + "%)</li><br>" +
+  							"<li style=\"color:red; font-size:10;\">" + d.R_Nominee + ": " + d.R_Votes + "(" + d.R_Percentage + "%)</li></ul>"
+                        ) 
+                        
+                        .style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY - 28) + "px")
+                        .style("opacity", 0.8);
+                        }
+                    })                    
+                    .on("mouseout", function() {
+                        tooltip.style("opacity", 0);
+                    })
+                    .append("tspan").text(function(d){ return d.Total_EV;})
+                    .attr("x", function(d) {
+                        return getNum(states, d.Abbreviation)[1] * (width / 13 + rectPadding) + rectWidth / 2;
+                    })
+                    .attr("y", function(d) {
+                        return getNum(states, d.Abbreviation)[0] * (height / 15 + rectPadding) + rectHeight / 2 + mapPadding + 10;
+                    })
+                    ;
+            }
+
+            function draw_Image(year) {
+                            d3.select(".image")
+                                .append("img")
+                                .attr("src", wholemap[year])
+                                .attr("width", "200")
+                                .attr("height", "300");                
+            }
+            
+                d3.csv(cur_csv, function(data) {                
+                    setup();
+                    draw_Timeline_Circles(data);
+                    drawmap(data);
+                });
+                
+/////////////
+
+//var width = 960;
+//var height = 500;
+
+// D3 Projection
+//d3.json("us-states.json", function(data) {
+//  console.log(data[0]);
+//  for (var j = 0; j < json.features.length; j++) {
+//						//console.log(json.features[j].properties.name);
+//						for (var k = 0; k < statedata.length; k++) {
+//							if (json.features[j].properties.name == statedata[k].State) {
+//								json.features[j].properties.color = statedata[k].color;
+//								json.features[j].properties.ev = statedata[k].Total_EV;
+//								json.features[j].properties.D = statedata[k].D_Percentage;
+//								json.features[j].properties.R = statedata[k].R_Percentage;
+//								json.features[j].properties.DV = statedata[k].D_Votes;
+//								json.features[j].properties.RV = statedata[k].R_Votes;
+//								json.features[j].properties.win = statedata[k].win;						
+//							}
+//						}
+//					}
+//                    //var f = json.features;
+//                    var svg1 = d3.select("body").append("svg")
+//					.attr("id","realmap")
+//					.attr("width", 1000)
+//					.attr("height", 800)
+//					.append("g")
+//					.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+//                    
+//                    svg1.selectAll("path")  
+//						.data(json.features)  
+//						.enter()  
+//						.append("path")  
+//						.attr("stroke","#000")  
+//						.attr("stroke-width",1)  
+//						.style("fill", function(d) {
+//							//console.log(d);
+//							return d.properties.color;
+//						});
+//});
+//d3.json("us-states.json", function(data) {          
+					//if (error)   
+					//	return console.error(error);  				
+					
+					
+					
+					//var f = json.features;
+					
+			//		svg1.selectAll("path")  
+			//			.data(json.features)  
+			//			.enter()  
+			//			.append("path")  
+			//			.attr("stroke","#000")  
+			//			.attr("stroke-width",1)  
+			//			.style("fill", function(d) {
+			//				//console.log(d);
+			//				return d.properties.color;
+			//			})
+			//			.on("mouseover", function(d) {
+			//				tooltip.transition()
+			//					.duration(200)
+			//					.style("opacity", .9);
+			//				tooltip.html(	"State: " + d.properties.name + "</br>" + 
+			//								"Total_EV: " + d.properties.ev + "</br>" + 
+			//								"D_Percentage: " + d.properties.D + " ( " + d.properties.DV + " ) " + "</br>" + 
+			//								"R_Percentage: " + d.properties.R + " ( " + d.properties.RV + " ) " + "</br>" + 
+			//								"Winner: " + d.properties.win
+			//							)
+			//					.style("left", (d3.event.pageX + 20) + "px")
+			//					.style("top", (d3.event.pageY + 20) + "px")
+			//					.style("position", "absolute")
+			//					.style("width", 100)
+			//					.style("height", "auto")
+			//					.style("border-style", "solid") 
+			//					.style("border-width", "1px")
+			//					.style("background-color", "white")
+			//					.style("border-radius", "5px");
+			//			});
+			//			.on("mouseout", function() {
+			//				tooltip.transition()
+			//					.duration(500)
+			//					.style("opacity", 0);
+			//			})	
+			//			.attr("d", path );            
+			//	});		
+			//});		
+       //}
+                
+            var zoom_handler = d3.zoom().on("zoom", zoom_actions);
+            zoom_handler(svg);
+            function zoom_actions(){
+                svg.attr("transform", d3.event.transform);
+            } 
+        </script>
+    </body>
+</html>
